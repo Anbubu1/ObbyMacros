@@ -1,0 +1,452 @@
+VERSION := "v2.3"
+
+LoadGui:
+    ; MAIN GUI
+    Gui, Show , w250 h400, Obby Macros %VERSION%
+    Gui, +HwndMainGUI -MinimizeBox -MaximizeBox
+    Gui, Color, 333333
+
+    ; MAKING SURE THINGS ARE SET
+    WallMacroMode = WallhopFlickLabel
+    ToggleStatus := "Off"
+    ToggleStatus2 := "Macro Deactivated"
+    AlwaysOnTopToggle := true
+    WallwalkDirection := "N/A"
+    WallwalkDirectionKeysToggle := "Off"
+    LocalAppData := "C:\Users\" A_UserName "\AppData\Local"
+    FolderPath := LocalAppData "\ObbyMacros"
+    ConfigFilePath := FolderPath "\config"
+    Config := ConfigFilePath "\config.ini"
+    zzz := true
+    SuspendToggle := true
+    SetWorkingDir, %LocalAppData%
+    if (!FileExist(FolderPath))
+        FileCreateDir, %FolderPath%
+
+    if (!FileExist(ConfigFilePath))
+        FileCreateDir, %ConfigFilePath%
+
+    if (!FileExist(Config))
+        FileAppend, [Settings]`nVERSION=%VERSION%`nToggleKeybind=`nMacro=`nWallwalkDirectionKeybinds=, %Config%
+    if (FileExist(Config)) {
+        IniRead, ConfigVERSION, %Config%, Settings, VERSION
+        if (!ConfigVERSION or ConfigVERSION != VERSION){
+            IniRead, TemporarySettings, %Config%, Settings
+            IniWrite, %VERSION%, %Config%, Settings, VERSION
+            IniWrite, %TemporarySettings%, %Config%, Settings
+        }
+    }
+    ; BIND
+    IniRead, ConfigBind, %Config%, Settings, ToggleKeybind, "XButton2"
+    if (!ConfigBind)
+        Bind := "XButton2"
+    else
+        Bind := ConfigBind
+
+    ; STARTING MACRO
+    IniRead, StartingMacro, %Config%, Settings, Macro, 1
+    if (!StartingMacro)
+        startingmacromode := 1
+    else
+        startingmacromode := StartingMacro
+
+    ; WALLWALK DIRECTION KEYBINDS
+    IniRead, ConfigWallwalkDirectionKeybinds, %Config%, Settings, WallwalkDirectionKeybinds, [Left,Right]
+    if (!ConfigWallwalkDirectionKeybinds){
+        WallwalkLeftKey := "Left"
+        WallwalkRightKey := "Right"
+    } else {
+        ConfigWallwalkKeysArray := StrSplit(ConfigWallwalkDirectionKeybinds, ",")
+        WallwalkLeftKey := ConfigWallwalkKeysArray[1]
+        WallwalkRightKey := ConfigWallwalkKeysArray[2]
+    }
+
+    ; TEXT FROM TOP TO BOTTOM
+
+    ; CREDITS
+    Gui, Font, s10 cWhite Normal
+    Gui, Add, Text, x10 y8 w250 Left, Credits to Zievex for Original Script.
+    Gui, Add, Text, x10 y25 w250 Left, Improved by Anbubu.
+
+    ; WALL MACROS
+    Gui, Font, s14
+    Gui, Add, Text, x0 y50 w250 Center, Obby Macros %VERSION%
+    Gui, Font, s8
+    Gui, Add, Text, x0 y367 w250 Center vWallMacroModeStatus, Chosen Macro: %SelectedMode2%
+    Gui, Font, s10
+    Gui, Add, Text, x28 y150 w250 vWallwalkDirectionStatus, Direction: %WallwalkDirection%
+    Gui, Font, s10 Bold
+    Gui, Add, Button, x20 y212 w210 h30 gOpenWallwalkHotkeyInput, Wallwalk Direction Keybinds
+
+    ; MACRO TOGGLE CHECKBOX
+    Gui, Font, s10 Normal
+    Gui, Add, CheckBox, x10 y80 w200 h20 vStatus gToggleWallhop, %ToggleStatus2%
+
+    ; ALWAYS ON TOP
+    Gui, Add, CheckBox, x10 y105 w200 h20 gAlwaysOnTop, Always On Top
+
+    ; WALLWALK DIRECTION KEYBIND TOGGLE
+    Gui, Add, CheckBox, x10 y130 w200 h20 vWallwalkDirectionKeyStatus gToggleWallwalkDirectionKeys, Wallwalk Direction Keys (%WallwalkDirectionKeysToggle%)
+
+    ; BINDS
+    Gui, Font, s10
+    Gui, Add, Text, x0 y190 w250 h30 Center vWallwalkDirectionKeys, Bind: [Left: %WallwalkLeftKey%, Right: %WallwalkRightKey%]
+    Gui, Add, Text, x0 y255 w250 Center vBindStatus, Bind: %Bind%
+    Gui, Font, s10 Bold
+    Gui, Add, Button, x45 y278 w160 h30 gOpenHotkeyInput, Change Hotkey Bind
+
+    ; SELECTING A MACRO
+    Gui, Font, s10 cWhite Normal
+    Gui, Add, Text, x0 y315 w250 Center, Select a macro:
+    Gui, Add, DropDownList, x25 y337 w200 h120 gChangeMode vMode, Wallhop|Wallwalk (Hold)|Wallhop Alignment Keys|Freeze Roblox|Freeze Roblox and Laugh
+    GuiControl, Choose, Mode, %startingmacromode%
+    GuiControlGet, SelectedMode2, , Mode
+    GuiControl,, WallMacroModeStatus, Chosen Macro: %SelectedMode2%
+    Gosub, ChangeMode
+return
+
+Gosub, LoadGui
+
+ErrorLabel:
+return
+
+InvalidHotkey(exception) {
+    MsgBox,, Error, Invalid hotkey!
+    return true
+}
+
+IsValidHotkey(hotkey) {
+    OnError("InvalidHotkey")
+    Hotkey, %hotkey%, ErrorLabel
+    if (ErrorLevel) {
+        return false
+    }
+    Hotkey, %hotkey%, Off
+    return true
+}
+
+OpenWallwalkHotkeyInput:
+    Hotkey, Enter, SetNewWallwalkBind, On
+    Hotkey, Escape, ExitBindSelection, On
+    Gui, WallwalkHotkeyInput:Destroy
+    Gui, WallwalkHotkeyInput:Font, s12 cWhite Bold
+    Gui, WallwalkHotkeyInput:Add, Text, x0 y7 w220 Center, Enter new wallwalk binds:
+    Gui, WallwalkHotkeyInput:Font, s10 cBlack Normal
+    Gui, WallwalkHotkeyInput:Add, Edit, x20 y35 w180 vNewWallwalkBind, %WallwalkLeftKey%, %WallwalkRightKey%
+    Gui, WallwalkHotkeyInput:Font, Bold
+    Gui, WallwalkHotkeyInput:Add, Button, x75 y70 w70 h25 gSetNewWallwalkBind, Set
+    Gui, WallwalkHotkeyInput:Color, 333333
+    Gui, WallwalkHotkeyInput:Show, w220 h105, Set Wallwalk Direction Binds
+    Gui, WallwalkHotkeyInput:+ToolWindow
+return
+
+SetNewWallwalkBind:
+    Hotkey, Enter, SetNewWallwalkBind, Off
+    Hotkey, Escape, ExitBindSelection, Off
+    Gui, WallwalkHotkeyInput:Submit, NoHide
+    WallwalkKeysArray := StrSplit(NewWallwalkBind, ",", A_Space)
+    Hotkey, %WallwalkLeftKey%, WallwalkLeftKeyLabel, Off
+    Hotkey, %WallwalkRightKey%, WallwalkRightKeyLabel, Off
+    WallwalkLeftKey := WallwalkKeysArray[1]
+    WallwalkRightKey := WallwalkKeysArray[2]
+    Hotkey, %WallwalkLeftKey%, WallwalkLeftKeyLabel, On
+    Hotkey, %WallwalkRightKey%, WallwalkRightKeyLabel, On
+    Gui, WallwalkHotkeyInput:Destroy
+    GuiControl, %MainGUI%:, WallwalkDirectionKeys, Bind: [Left: %WallwalkLeftKey%, Right: %WallwalkRightKey%]
+return
+
+; SET HOTKEY BIND CODE
+OpenHotkeyInput:
+    Hotkey, Enter, SetNewBind, On
+    Hotkey, Escape, ExitBindSelection, On
+    Gui, HotkeyInput:Destroy
+    Gui, HotkeyInput:Font, s12 cWhite Bold
+    Gui, HotkeyInput:Add, Text, x0 y7 w220 Center, Enter new hotkey bind:
+    Gui, HotkeyInput:Font, s10 cBlack Normal
+    Gui, HotkeyInput:Add, Edit, x20 y35 w180 vNewBind, %Bind%
+    Gui, HotkeyInput:Font, Bold
+    Gui, HotkeyInput:Add, Button, x75 y70 w70 h25 vHotkeySubmitButton gSetNewBind, Set
+    Gui, HotkeyInput:Color, 333333
+    Gui, HotkeyInput:Show, w220 h105, Set Hotkey Bind
+    Gui, HotkeyInput:+ToolWindow
+return
+
+SetNewBind:
+    Hotkey, Enter, SetNewBind, Off
+    Hotkey, Escape, ExitBindSelection, Off
+    Gui, HotkeyInput:Submit, NoHide
+    if (!IsValidHotkey(NewBind)) {
+
+    } else {
+        Bind := NewBind
+    }
+    GuiControl, %MainGUI%:, BindStatus, Bind: %Bind%
+    Gui, HotkeyInput:Destroy
+return
+
+ExitBindSelection:
+    if (WinExist("Set Hotkey Bind"))
+        Gui, HotkeyInput:Destroy
+    else if (WinExist("Set Wallwalk Direction Binds")) {
+        Gui, WallwalkHotkeyInput:Destroy
+    }
+return
+
+ToggleWallhop:
+    if (ToggleStatus = "On") {
+        Hotkey, %Bind%, %WallMacroMode%, Off
+        ToggleStatus := "Off"
+        ToggleStatus2 := "Macro Deactivated"
+    } else if (ToggleStatus = "Off") {
+        Hotkey, %Bind%, %WallMacroMode%, On
+        ToggleStatus := "On"
+        ToggleStatus2 := "Macro Activated"
+    }
+    GuiControl,, Status, %ToggleStatus2%
+return
+
+ToggleWallwalkDirectionKeys:
+    if (WallwalkDirectionKeysToggle = "On") {
+        Hotkey, %WallwalkLeftKey%, WallwalkLeftKeyLabel, Off
+        Hotkey, %WallwalkRightKey%, WallwalkRightKeyLabel, Off
+        WallwalkDirectionKeysToggle := "Off"
+    } else if (WallwalkDirectionKeysToggle = "Off") {
+        Hotkey, %WallwalkLeftKey%, WallwalkLeftKeyLabel, On
+        Hotkey, %WallwalkRightKey%, WallwalkRightKeyLabel, On
+        WallwalkDirectionKeysToggle := "On"
+    }
+    GuiControl,, WallwalkDirectionKeyStatus, Wallwalk Direction Keys (%WallwalkDirectionKeysToggle%)
+return
+
+WallwalkLeftKeyLabel:
+    if (SelectedMode = "Wallwalk (Hold)") {
+        WallwalkDirection := "Left"
+        GuiControl,, WallwalkDirectionStatus, Direction: %WallwalkDirection%
+    } else {
+        SendInput, {Left down}
+        KeyWait, Left
+        SendInput, {Left up}
+    }
+return
+
+WallwalkRightKeyLabel:
+    if (SelectedMode = "Wallwalk (Hold)") {
+        WallwalkDirection := "Right"
+        GuiControl,, WallwalkDirectionStatus, Direction: %WallwalkDirection%
+    } else {
+        SendInput, {Right down}
+        KeyWait, Right
+        SendInput, {Right up}
+    }
+return
+
+; DROPDOWN CODE
+CheckIfOn:
+    if (ToggleStatus = "On") {
+        Hotkey, %Bind%, %WallMacroMode%, On
+    }
+return
+WallhopLabel:
+    WallMacroMode = WallhopFlickLabel
+    WallwalkDirection := "N/A"
+    GuiControl,, WallwalkDirectionStatus, Direction: %WallwalkDirection%
+    Gosub, CheckIfOn
+return
+WallwalkLabel:
+    WallMacroMode = WallwalkToggleLabel
+    WallwalkDirection := "Right"
+    GuiControl,, WallwalkDirectionStatus, Direction: %WallwalkDirection%
+    Gosub, CheckIfOn
+return
+WallhopAlignmentLabel:
+    WallMacroMode = WallhopAlignmentKeysFlickLabel
+    WallwalkDirection := "N/A"
+    GuiControl,, WallwalkDirectionStatus, Direction: %WallwalkDirection%
+    Gosub, CheckIfOn
+return
+/*
+_180TurnLabel:
+    WallMacroMode = _180TurnFlickLabel
+    WallwalkDirection := "N/A"
+    GuiControl,, WallwalkDirectionStatus, Direction: %WallwalkDirection%
+    Gosub, CheckIfOn
+return
+*/
+FreezeRobloxLabel:
+    WallMacroMode = FreezeRoblox
+    WallwalkDirection := "N/A"
+    GuiControl,, WallwalkDirectionStatus, Direction: %WallwalkDirection%
+    Gosub, CheckIfOn
+return
+FreezeRobloxAndLaughLabel:
+    WallMacroMode = FreezeRobloxAndLaugh
+    WallwalkDirection := "N/A"
+    GuiControl,, WallwalkDirectionStatus, Direction: %WallwalkDirection%
+    Gosub, CheckIfOn
+return
+
+ChangeMode:
+    if (ToggleStatus = "On") {
+        Hotkey, %Bind%, %WallMacroMode%, Off
+    }
+    GuiControlGet, SelectedMode, , Mode
+    if (SelectedMode = "Wallhop Alignment Keys") {
+        GuiControl,, WallMacroModeStatus, Chosen Macro: %SelectedMode%
+        Goto, WallhopAlignmentLabel
+    } else
+    if (SelectedMode = "Wallwalk (Hold)") {
+        GuiControl,, WallMacroModeStatus, Chosen Macro: %SelectedMode%
+        Goto, WallwalkLabel
+    } else
+    if (SelectedMode = "Wallhop") {
+        GuiControl,, WallMacroModeStatus, Chosen Macro: %SelectedMode%
+        Goto, WallhopLabel
+    } else
+    /*
+    if (SelectedMode = "180 Turn") {
+        GuiControl,, WallMacroModeStatus, Chosen Macro: %SelectedMode%
+        Goto, _180TurnLabel
+    }
+    */
+    if (SelectedMode = "Freeze Roblox") {
+        GuiControl,, WallMacroModeStatus, Chosen Macro: %SelectedMode%
+        Goto, FreezeRobloxLabel
+    }
+    if (SelectedMode = "Freeze Roblox and Laugh") {
+        GuiControl,, WallMacroModeStatus, Chosen Macro: %SelectedMode%
+        Goto, FreezeRobloxAndLaughLabel
+    }
+return
+
+AlwaysOnTop:
+    if (AlwaysOnTopToggle) {
+        Gui, %MainGUI%: +AlwaysOnTop
+        AlwaysOnTopToggle := false
+    } else if (!AlwaysOnTopToggle) {
+        Gui, %MainGUI%: -AlwaysOnTop
+        AlwaysOnTopToggle := true
+    }
+return
+
+Gosub, AlwaysOnTop
+
+; WALLHOP CODE
+WallhopFlickLabel:
+    MouseGetPos, x, y
+    MouseMove, x+8, y, 0
+    MouseMove, x-8, y, 0
+return
+
+; WALLWALK CODE
+WallwalkToggleLabel:
+    while GetKeyState(Bind, "P") {
+        MouseGetPos, x, y
+        if (WallwalkDirection = "Right") {
+            MouseMove, x+3.5, y, 0
+            MouseMove, x-3.5, y, 0
+        } else if (WallwalkDirection = "Left") {
+            MouseMove, x-3.5, y, 0
+            MouseMove, x+3.5, y, 0
+        }
+        Sleep, 1
+    }
+return
+
+; WALLHOP ALIGNMENT KEYS CODE
+WallhopAlignmentKeysFlickLabel:
+    Send, {,}
+    Sleep, 1 ; This is to prevent pressing the alignment keys too fast lmao
+    Send, {.}
+return
+
+; doesn't work lmao
+/*
+_180TurnFlickLabel:
+    MouseGetPos, x, y
+    MouseMove, x+24, y, 0
+    MouseMove, x+24, y, 0
+return
+*/
+
+; FREEZE ROBLOX CODE
+FreezeRoblox:
+    rblx := "RobloxPlayerBeta.exe"
+    Process_Suspend(rblx)
+    Sleep, 100
+    Process_Resume(rblx)
+return
+
+FreezeRobloxAndLaugh:
+    Send, /
+    Sleep, 1
+    Send, /e laugh
+    Sleep, 1
+    Send, {Enter}
+    Sleep, 300
+    rblx := "RobloxPlayerBeta.exe"
+    Send, {s down}
+    Send, {Space down}
+    Send, {LShift}
+    Process_Suspend(rblx)
+    Sleep, 100
+    Process_Resume(rblx)
+    Sleep, 1
+    Send, {s up}
+    Send, {Space up}
+return
+
+Process_Suspend(PID_or_Name) {
+    PID := (InStr(PID_or_Name,".")) ? ProcExist(PID_or_Name) : PID_or_Name
+    h := DllCall("OpenProcess", "uInt", 0x1F0FFF, "Int", 0, "Int", pid)
+    if (!h)   
+        return -1
+    DllCall("ntdll.dll\NtSuspendProcess", "Int", h)
+    DllCall("CloseHandle", "Int", h)
+	return
+}
+Process_Resume(PID_or_Name) {
+    PID := (InStr(PID_or_Name,".")) ? ProcExist(PID_or_Name) : PID_or_Name
+    h := DllCall("OpenProcess", "uInt", 0x1F0FFF, "Int", 0, "Int", pid)
+    if (!h)
+        return -1
+    DllCall("ntdll.dll\NtResumeProcess", "Int", h)
+    DllCall("CloseHandle", "Int", h)
+}
+ProcExist(PID_or_Name="") {
+    Process, Exist, % (PID_or_Name="") ? DllCall("GetCurrentProcessID") : PID_or_Name
+    return Errorlevel
+}
+
+GuiClose:
+    GuiControlGet, SelectedMode3, , Mode
+    if (SelectedMode3 = "Freeze Roblox and Laugh") {
+        startingchosenmacro := 5
+    } else
+    if (SelectedMode3 = "Freeze Roblox") {
+        startingchosenmacro := 4
+    } else
+    if (SelectedMode3 = "Wallhop Alignment Keys") {
+        startingchosenmacro := 3
+    } else
+    if (SelectedMode3 = "Wallwalk (Hold)") {
+        startingchosenmacro := 2
+    } else
+    if (SelectedMode3 = "Wallhop") {
+        startingchosenmacro := 1
+    }
+    FileDelete, %Config%
+    FileAppend,
+                ( LTRIM Join
+                [Settings]`n
+                VERSION=%VERSION%`n
+                ToggleKeybind=%Bind%`n
+                Macro=%startingchosenmacro%`n
+                WallwalkDirectionKeybinds=%WallwalkLeftKey%,%WallwalkRightKey%
+                ), %Config%
+    Process_Resume(rblx)
+    ExitApp
+return
+
+Numpad4::
+    ExitApp
+return
