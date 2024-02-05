@@ -219,7 +219,7 @@ ToggleWallwalkDirectionKeys:
 return
 
 WallwalkLeftKeyLabel:
-    if (SelectedMode = "Wallwalk (Hold)") {
+    if (SelectedMode = "Wallwalk (Hold)" or SelectedMode = "Wallhop") {
         WallwalkDirection := "Left"
         GuiControl,, WallwalkDirectionStatus, Direction: %WallwalkDirection%
     } else {
@@ -230,7 +230,7 @@ WallwalkLeftKeyLabel:
 return
 
 WallwalkRightKeyLabel:
-    if (SelectedMode = "Wallwalk (Hold)") {
+    if (SelectedMode = "Wallwalk (Hold)" or SelectedMode = "Wallhop") {
         WallwalkDirection := "Right"
         GuiControl,, WallwalkDirectionStatus, Direction: %WallwalkDirection%
     } else {
@@ -248,7 +248,7 @@ CheckIfOn:
 return
 WallhopLabel:
     WallMacroMode = WallhopFlickLabel
-    WallwalkDirection := "N/A"
+    WallwalkDirection := "Right"
     GuiControl,, WallwalkDirectionStatus, Direction: %WallwalkDirection%
     Gosub, CheckIfOn
 return
@@ -333,8 +333,13 @@ Gosub, AlwaysOnTop
 ; WALLHOP CODE
 WallhopFlickLabel:
     MouseGetPos, x, y
-    MouseMove, x+8, y, 0
-    MouseMove, x-8, y, 0
+    if (WallwalkDirection = "Right") {
+        MouseMove, x+8, y, 0
+        MouseMove, x-8, y, 0
+    } else if (WallwalkDirection = "Left") {
+        MouseMove, x-8, y, 0
+        MouseMove, x+8, y, 0
+    }
 return
 
 ; WALLWALK CODE
