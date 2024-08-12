@@ -3,7 +3,7 @@
 
 start_time := a_tickcount
 
-global VERSION := "v3.5"
+global VERSION := "v3.6"
 
 try {
     if !isset(newthread) {
@@ -24,7 +24,7 @@ global main := gui("-caption -minimizebox -maximizebox", "obby macros v3")
     main_toggletype_width       := " w" main_toggletype_width_raw
     main_exitapp_bind           := "*!p"
     global main_width_raw       := 350
-    global main_height_raw      := 400
+    global main_height_raw      := 450
     main_top                    := "y" main_top_raw
     main_width                  := "w" main_width_raw
     main_height                 := "h" main_height_raw
@@ -39,7 +39,7 @@ setworkingdir "C:\Users\" a_username "\AppData\Local"
 setworkingdir "C:\Users\" a_username "\AppData\Local\Obby Macros V3"
     if fileexist("config.ini") {
         try {
-            iniread("config.ini", "version", "version_number") = VERSION ? true : filedelete "config.ini"
+            iniread("config.ini", "version", "version_number") = VERSION ? true : false
         } catch error {
             filedelete "config.ini"
         }
@@ -753,7 +753,7 @@ create_hotkey(gui, checkbox, &name) {
 
     if fileexist("config.ini") and filegetsize("config.ini") > 0 {
         try {
-            cfg_values := strsplit(iniread("config.ini", "main", checkbox.classnn), "|")
+            cfg_values := strsplit(iniread("config.ini", "main", checkbox.text), "|")
             cfg_value := strupper(cfg_values[1])
             old_length := strlen(name.value)
             name.value := "[" cfg_value "]"
@@ -827,7 +827,7 @@ create_valueselect(gui, checkbox, &name, default_value, unit := false, min := fa
 
     if fileexist("config.ini") and filegetsize("config.ini") > 0 {
         try {
-            cfg_values := strsplit(iniread("config.ini", "main", checkbox.classnn), "|")
+            cfg_values := strsplit(iniread("config.ini", "main", checkbox.text), "|")
             cfg_value := cfg_values[2]
             if cfg_value = "" {
                 cfg_value := 0
@@ -948,12 +948,13 @@ main.setfont("cwhite s12 norm")
     global freeze_macro     := create_checkbox(main, &freeze_macro_checkbox,     "Freeze Macro",       freeze,    &freeze_macro_hotkey,,                                                                  ["freezes roblox without the white bar, hold to freeze", "s8", "s12"])
     global low_fps_macro    := create_checkbox(main, &low_fps_macro_checkbox,    "Low FPS Macro",      low_fps,   &low_fps_macro_hotkey,    [&low_fps_macro_valueselect,    30, " FPS"],                  ["spams freeze to replicate low fps, inaccurate",        "s8", "s12"])
     global chat_msg_macro   := create_checkbox(main, &chat_msg_macro_checkbox,   "Chat Message Macro", chat_msg,  &chat_msg_macro_hotkey,   [&chat_msg_macro_valueselect,  "/e dance2"],                  ["quickly pastes and enters a message in chat",          "s8", "s12"])
+    global mouse_overlay    := create_checkbox(main, &mouse_overlay_checkbox,    "Mouse Overlay",      overlay)
 
 main.setfont("cwhite s11 norm")
-    global roblox_sensitivity := create_text(main, &roblox_sensitivity_text, "In-game Roblox Sensitivity", [&roblox_sensitivity_valueselect, "0.2", "", 0, 4], ["Please set this! It helps to create more accurate flicks", "s8", "s11"])
+    global roblox_sensitivity := create_text(main, &roblox_sensitivity_text, "In-game Roblox Sensitivity", [&roblox_sensitivity_valueselect, "0.2", "", 0, 4, true], ["Please set this! It helps to create more accurate flicks", "s8", "s11"])
 
 main.setfont("cwhite s10 norm")
-    bottom_text(main, &bottom_exitapp_info,       "Created by @anbubu`n° = degree symbol`nFYI: Roblox Sensitivity affects flick amount`nForce Quit: Alt + P")
+    bottom_text(main, &bottom_exitapp_info,       "Created by @anbubu on Discord`n° = degree symbol`nFYI: Roblox Sensitivity affects flick amount`nForce Quit: Alt + P")
     loaded_in_text := bottom_text(main, &bottom_loaded_time, "loaded in: ", true)
 
 /*
@@ -987,7 +988,7 @@ macro_toggle_function(x, y := false, hotkey_guictrl := false, valueselect_guictr
     ; dumb fix for mouse buttons working 💀
     new_x_value := x.value ? "On" : "Off"
 
-    macro_key := strlower(regexreplace(hotkey_guictrl.Text, "[\[\]]"))
+    hotkey_guictrl ? macro_key := strlower(regexreplace(hotkey_guictrl.Text, "[\[\]]")) : macro_key := false
     
     ; if hotkey not set or in the middle of setting, don't do anything
     if macro_key = "none" or macro_key = "..." {
@@ -1009,6 +1010,15 @@ macro_toggle_function(x, y := false, hotkey_guictrl := false, valueselect_guictr
     }
 
     toggle_used := x.classnn
+
+    if !hotkey_guictrl {
+        try {
+            action_function(x)
+        } catch error {
+            action_function
+        }
+        return
+    }
 
     ; check if the new hotkey is already in use by another checkbox
     if hotkey_checkbox_map.has(macro_key) and hotkey_checkbox_map[macro_key] != toggle_used {
@@ -1037,6 +1047,13 @@ macro_toggle_function(x, y := false, hotkey_guictrl := false, valueselect_guictr
 
     ; set up the new hotkey
     hotkey macro_key, valueselect_guictrl and amount ? (thishotkey) => action_function(thishotkey, amount, x) : action_function, new_x_value
+}
+
+overlay(toggle) {
+    if toggle {
+        mouse_overlay_gui := gui("-caption -minimizebox -maximizebox", "mouse overlay")
+        
+    }
 }
 
 roblox_angle_to_pixel(angle, sensitivity) {
@@ -1137,7 +1154,7 @@ save_config(exitreason := false, exitcode := false) {
     global VERSION
     iniwrite VERSION, "config.ini", "version", "version_number"
     for i, v in valued_guictrls {
-        main_guictrl := v[1].classnn
+        main_guictrl := v[1].text
         set_hotkey := v[2] ? regexreplace(strlower(v[2].text), "[\[\]]") : v[2]
         set_value := v[3] ? regexreplace(regexreplace(v[3].value, "[\[\]]"), v[3].unit) : v[3]
         iniwrite set_hotkey "|" set_value, "config.ini", "main", main_guictrl
