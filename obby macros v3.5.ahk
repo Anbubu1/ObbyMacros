@@ -3,7 +3,7 @@
 
 start_time := a_tickcount
 
-VERSION := "v3.3"
+global VERSION := "v3.5"
 
 try {
     if !isset(newthread) {
@@ -23,7 +23,7 @@ global main := gui("-caption -minimizebox -maximizebox", "obby macros v3")
     main_leftoffset             := "x" main_leftoffset_raw " "
     main_toggletype_width       := " w" main_toggletype_width_raw
     main_exitapp_bind           := "*!p"
-    global main_width_raw       := 300
+    global main_width_raw       := 350
     global main_height_raw      := 400
     main_top                    := "y" main_top_raw
     main_width                  := "w" main_width_raw
@@ -37,6 +37,14 @@ setworkingdir "C:\Users\" a_username "\AppData\Local"
     dircreate "Obby Macros V3"
 
 setworkingdir "C:\Users\" a_username "\AppData\Local\Obby Macros V3"
+    if fileexist("config.ini") {
+        try {
+            iniread("config.ini", "version", "version_number") = VERSION ? true : filedelete "config.ini"
+        } catch error {
+            filedelete "config.ini"
+        }
+    }
+
     if !fileexist("config.ini") {
         fileappend "", "config.ini"
     }
@@ -267,7 +275,7 @@ hotkeyselect(x, y, valueselect := false, checkbox := false) {
 
 global amountselect_identifier := ""
 
-amountselect(x, y, checkbox, unit := false, min := false, max := false) {
+amountselect(x, y, checkbox, unit := false, min := false, max := false, number_only := false) {
     ; REALLY BAD HARD CODED CODE BUT IT WORKS
     global using_drag_function, amountselect_identifier
 
@@ -283,6 +291,11 @@ amountselect(x, y, checkbox, unit := false, min := false, max := false) {
         }
     } catch error {
         boundfunc_nonexistent := true
+    }
+
+    if !number_only {
+        checkbox.value := false
+        checkbox.setfont("cffc0c0")
     }
 
     ; get old text
@@ -328,11 +341,34 @@ amountselect(x, y, checkbox, unit := false, min := false, max := false) {
         hotkey "lbutton", drag, "on"
         hotifwinactive
 
-        if !isnumber(editbox.value) {
+        if !isnumber(editbox.value) and number_only {
             ; hardcoded width resize
             x.move(,, 44)
             x.text := "[N/A]"
             
+            editbox.visible := false
+            rightbracket.visible := false
+            using_drag_function := true
+
+            boundfunc_nonexistent ? false : checkbox.boundfunc(checkbox)
+            return
+        } else if !isnumber(editbox.value) and !number_only {
+            if min or max {
+                msgbox "Error: min or max defined in a non-number amountselect", "amountselect Error", "T3"
+                exitapp
+            }
+
+            if unit {
+                msgbox "Error: unit defined in a non-number amountselect", "amountselect Error", "T3"
+                exitapp
+            }
+
+            newvalue := editbox.value
+
+            x.move(,, old_width + (strlen(newvalue) * 12))
+
+            x.text := "[" newvalue "]"
+
             editbox.visible := false
             rightbracket.visible := false
             using_drag_function := true
@@ -610,6 +646,9 @@ create_text(gui, &name, text, valueselect, add_caption := false) {
                 valueselect_min := valueselect[4]
                 if valueselect_length >= 5 {
                     valueselect_max := valueselect[5]
+                    if valueselect_length >= 6 {
+                        valueselect_number_only := valueselect[6]
+                    }
                 }
             }
         }
@@ -619,7 +658,8 @@ create_text(gui, &name, text, valueselect, add_caption := false) {
             starting_value,
             isset(valueselect_unit) ? valueselect_unit : false,
             isset(valueselect_min) ? valueselect_min : false,
-            isset(valueselect_max) ? valueselect_max : false
+            isset(valueselect_max) ? valueselect_max : false,
+            isset(valueselect_number_only) ? valueselect_number_only : false
         )
     }
 
@@ -712,12 +752,16 @@ create_hotkey(gui, checkbox, &name) {
     checkbox.hotkey := name
 
     if fileexist("config.ini") and filegetsize("config.ini") > 0 {
-        cfg_values := strsplit(iniread("config.ini", "main", checkbox.classnn), "|")
-        cfg_value := strupper(cfg_values[1])
-        old_length := strlen(name.value)
-        name.value := "[" cfg_value "]"
-        new_length := strlen(name.value)
-        name.move(,,strlen(name.text) * 10 - 6)
+        try {
+            cfg_values := strsplit(iniread("config.ini", "main", checkbox.classnn), "|")
+            cfg_value := strupper(cfg_values[1])
+            old_length := strlen(name.value)
+            name.value := "[" cfg_value "]"
+            new_length := strlen(name.value)
+            name.move(,,strlen(name.text) * 10 - 6)
+        } catch error {
+
+        }
     }
 
     ; terrible way of doing this but idrc
@@ -762,17 +806,19 @@ create_hotkey(gui, checkbox, &name) {
 
 global identify_valueselect_hotkey_counter := map()
 
-create_valueselect(gui, checkbox, &name, default_value, unit := false, min := false, max := false, freeform := false) {
+create_valueselect(gui, checkbox, &name, default_value, unit := false, min := false, max := false, number_only := false) {
     global identify_valueselect_hotkey_counter, valueselects
 
     gui.setfont(, "consolas")
     name := unit ? gui.addtext(, "[" default_value unit "]") : gui.addtext(, "[" default_value "]")
     checkbox.valueselect := name
+    name.unit := unit
 
     name.boundfunc := amountselect.bind(,,
         checkbox, unit ? unit : false,
         min ? min : false,
-        max ? max : false
+        max ? max : false,
+        number_only ? number_only : false
     )
 
     name.onevent("click", name.boundfunc)
@@ -780,16 +826,20 @@ create_valueselect(gui, checkbox, &name, default_value, unit := false, min := fa
     gui.setfont(, "segoe ui")
 
     if fileexist("config.ini") and filegetsize("config.ini") > 0 {
-        cfg_values := strsplit(iniread("config.ini", "main", checkbox.classnn), "|")
-        cfg_value := cfg_values[2]
-        if cfg_value = "" {
-            cfg_value := 0
+        try {
+            cfg_values := strsplit(iniread("config.ini", "main", checkbox.classnn), "|")
+            cfg_value := cfg_values[2]
+            if cfg_value = "" {
+                cfg_value := 0
+            }
+            old_length := strlen(name.value)
+            name.value := unit ? "[" cfg_value unit "]" : "[" cfg_value "]"
+            new_length := strlen(name.value)
+            name.getpos(,, &getpos_width)
+            name.move(,, getpos_width + (new_length * 12))
+        } catch error {
+
         }
-        old_length := strlen(name.value)
-        name.value := unit ? "[" cfg_value unit "]" : "[" cfg_value "]"
-        new_length := strlen(name.value)
-        name.getpos(,, &getpos_width)
-        name.move(,, getpos_width + (new_length * 12))
     }
 
     try {
@@ -892,11 +942,12 @@ under_title.move(,, main_width_raw - getpos_width - 20)
 main.setfont("cwhite s12 norm")
     ; quick tip, if you're defining the valueselect array, make sure to convert any number that has a decimal into a string to prevent a flurry of 0s
     ; i have yet to have create_checkbox return an array of useful things
-    global flick_macro      := create_checkbox(main, &flick_macro_checkbox,      "Flick Macro",       flick,    &flick_macro_hotkey,      [&flick_macro_valueselect,      45,  "°", -1000, 1000], ["lets you flick, mainly for wall hops",                 "s8", "s12"])
-    global wallwalk_macro   := create_checkbox(main, &wallwalk_macro_checkbox,   "Wallwalk Macro",    wallwalk, &wallwalk_macro_checkbox, [&wallwalk_macro_valueselect,   15,  "°", -1000, 1000], ["spams flick",                                          "s8", "s12"])
-    global cornerclip_macro := create_checkbox(main, &cornerclip_macro_checkbox, "Corner Clip Macro", flick,    &cornerclip_macro_hotkey, [&cornerclip_macro_valueselect, 180, "°", -1000, 1000], ["flicks 180°, unless you change it",                    "s8", "s12"])
-    global freeze_macro     := create_checkbox(main, &freeze_macro_checkbox,     "Freeze Macro",      freeze,   &freeze_macro_hotkey,,                                                            ["freezes roblox without the white bar, hold to freeze", "s8", "s12"])
-    global low_fps_macro    := create_checkbox(main, &low_fps_macro_checkbox,    "Low FPS Macro",     low_fps,  &low_fps_macro_hotkey,    [&low_fps_macro_valueselect,    30, " FPS"],            ["spams freeze to replicate low fps, inaccurate",        "s8", "s12"])
+    global flick_macro      := create_checkbox(main, &flick_macro_checkbox,      "Flick Macro",        flick,     &flick_macro_hotkey,      [&flick_macro_valueselect,      45,  "°", -1000, 1000, true], ["lets you flick, mainly for wall hops",                 "s8", "s12"])
+    global wallwalk_macro   := create_checkbox(main, &wallwalk_macro_checkbox,   "Wallwalk Macro",     wallwalk,  &wallwalk_macro_checkbox, [&wallwalk_macro_valueselect,   15,  "°", -1000, 1000, true], ["spams flick",                                          "s8", "s12"])
+    global cornerclip_macro := create_checkbox(main, &cornerclip_macro_checkbox, "Corner Clip Macro",  flick,     &cornerclip_macro_hotkey, [&cornerclip_macro_valueselect, 180, "°", -1000, 1000, true], ["flicks 180°, unless you change it",                    "s8", "s12"])
+    global freeze_macro     := create_checkbox(main, &freeze_macro_checkbox,     "Freeze Macro",       freeze,    &freeze_macro_hotkey,,                                                                  ["freezes roblox without the white bar, hold to freeze", "s8", "s12"])
+    global low_fps_macro    := create_checkbox(main, &low_fps_macro_checkbox,    "Low FPS Macro",      low_fps,   &low_fps_macro_hotkey,    [&low_fps_macro_valueselect,    30, " FPS"],                  ["spams freeze to replicate low fps, inaccurate",        "s8", "s12"])
+    global chat_msg_macro   := create_checkbox(main, &chat_msg_macro_checkbox,   "Chat Message Macro", chat_msg,  &chat_msg_macro_hotkey,   [&chat_msg_macro_valueselect,  "/e dance2"],                  ["quickly pastes and enters a message in chat",          "s8", "s12"])
 
 main.setfont("cwhite s11 norm")
     global roblox_sensitivity := create_text(main, &roblox_sensitivity_text, "In-game Roblox Sensitivity", [&roblox_sensitivity_valueselect, "0.2", "", 0, 4], ["Please set this! It helps to create more accurate flicks", "s8", "s11"])
@@ -939,11 +990,23 @@ macro_toggle_function(x, y := false, hotkey_guictrl := false, valueselect_guictr
     macro_key := strlower(regexreplace(hotkey_guictrl.Text, "[\[\]]"))
     
     ; if hotkey not set or in the middle of setting, don't do anything
-    if macro_key = "none" or macro_key = "..." or valueselect_guictrl.text = "[N/A]" {
+    if macro_key = "none" or macro_key = "..." {
         return
     }
+    
+    if valueselect_guictrl {
+        if valueselect_guictrl.text = "[N/A]" {
+            return
+        }
+    }
 
-    valueselect_guictrl ? amount := number(regexreplace(valueselect_guictrl.Value, "[^0-9.]")) : amount := false
+    valueselect_guictrl ? amount := regexreplace(regexreplace(valueselect_guictrl.Value, "[\[\]]"), valueselect_guictrl.unit) : amount := false
+
+    try {
+        amount := number(amount)
+    } catch error {
+
+    }
 
     toggle_used := x.classnn
 
@@ -1050,13 +1113,33 @@ process_resume(PID_or_name) {
     dllcall("CloseHandle", "int", process_openprocess)
 }
 
+chat_msg(thishotkey, chat_msg, guictrl) {
+    global danceclip_macro
+    old_clipboard := a_clipboard
+    a_clipboard := chat_msg
+    send "{/ down}"
+    sleep 50
+    send "{backspace}"
+    sleep 100
+    send "{lctrl down}{v down}"
+    sleep 50
+    send "{lctrl up}{v up}"
+    sleep 20
+    send "{enter}"
+    sleep 20
+    send "{/ up}"
+    a_clipboard := old_clipboard
+}
+
 main.show(main_width " " main_height)
 
 save_config(exitreason := false, exitcode := false) {
+    global VERSION
+    iniwrite VERSION, "config.ini", "version", "version_number"
     for i, v in valued_guictrls {
         main_guictrl := v[1].classnn
         set_hotkey := v[2] ? regexreplace(strlower(v[2].text), "[\[\]]") : v[2]
-        set_value := v[3] ? regexreplace(strlower(v[3].text), "[^0-9.]") : v[3]
+        set_value := v[3] ? regexreplace(regexreplace(v[3].value, "[\[\]]"), v[3].unit) : v[3]
         iniwrite set_hotkey "|" set_value, "config.ini", "main", main_guictrl
     }
 }
