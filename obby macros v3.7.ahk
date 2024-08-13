@@ -3,7 +3,7 @@
 
 start_time := a_tickcount
 
-global VERSION := "v3.6"
+global VERSION := "v3.7"
 
 try {
     if !isset(newthread) {
@@ -299,7 +299,7 @@ amountselect(x, y, checkbox, unit := false, min := false, max := false, number_o
     }
 
     ; get old text
-    oldtext := regexreplace(x.text, "[\[\]]")
+    oldtext := number_only ? regexreplace(x.text, "[^0-9.]") : regexreplace(x.text, "[\[\]]")
     x.text := "["
 
     ; get old width
@@ -330,9 +330,7 @@ amountselect(x, y, checkbox, unit := false, min := false, max := false, number_o
     editbox.focus()
 
     ; sets editbox text to be oldtext
-    if isnumber(oldtext) {
-        editbox.value := oldtext
-    }
+    editbox.value := oldtext
 
     ; exit amountselect function
     exitselect() {
@@ -578,6 +576,9 @@ create_checkbox(gui, &name, text, action_function := false, hotkey := false, val
                 valueselect_min := valueselect[4]
                 if valueselect_length >= 5 {
                     valueselect_max := valueselect[5]
+                    if valueselect_length >= 6 {
+                        valueselect_number_only := valueselect[6]
+                    }
                 }
             }
         }
@@ -587,7 +588,8 @@ create_checkbox(gui, &name, text, action_function := false, hotkey := false, val
             starting_value,
             isset(valueselect_unit) ? valueselect_unit : false,
             isset(valueselect_min) ? valueselect_min : false,
-            isset(valueselect_max) ? valueselect_max : false
+            isset(valueselect_max) ? valueselect_max : false,
+            isset(valueselect_number_only) ? valueselect_number_only : false
         )
     }
 
@@ -946,12 +948,13 @@ main.setfont("cwhite s12 norm")
     global wallwalk_macro   := create_checkbox(main, &wallwalk_macro_checkbox,   "Wallwalk Macro",     wallwalk,  &wallwalk_macro_checkbox, [&wallwalk_macro_valueselect,   15,  "°", -1000, 1000, true], ["spams flick",                                          "s8", "s12"])
     global cornerclip_macro := create_checkbox(main, &cornerclip_macro_checkbox, "Corner Clip Macro",  flick,     &cornerclip_macro_hotkey, [&cornerclip_macro_valueselect, 180, "°", -1000, 1000, true], ["flicks 180°, unless you change it",                    "s8", "s12"])
     global freeze_macro     := create_checkbox(main, &freeze_macro_checkbox,     "Freeze Macro",       freeze,    &freeze_macro_hotkey,,                                                                  ["freezes roblox without the white bar, hold to freeze", "s8", "s12"])
-    global low_fps_macro    := create_checkbox(main, &low_fps_macro_checkbox,    "Low FPS Macro",      low_fps,   &low_fps_macro_hotkey,    [&low_fps_macro_valueselect,    30, " FPS"],                  ["spams freeze to replicate low fps, inaccurate",        "s8", "s12"])
+    global low_fps_macro    := create_checkbox(main, &low_fps_macro_checkbox,    "Low FPS Macro",      low_fps,   &low_fps_macro_hotkey,    [&low_fps_macro_valueselect,    30, " FPS", 0,   1000, true], ["spams freeze to replicate low fps, inaccurate",        "s8", "s12"])
     global chat_msg_macro   := create_checkbox(main, &chat_msg_macro_checkbox,   "Chat Message Macro", chat_msg,  &chat_msg_macro_hotkey,   [&chat_msg_macro_valueselect,  "/e dance2"],                  ["quickly pastes and enters a message in chat",          "s8", "s12"])
     global mouse_overlay    := create_checkbox(main, &mouse_overlay_checkbox,    "Mouse Overlay",      overlay)
 
 main.setfont("cwhite s11 norm")
     global roblox_sensitivity := create_text(main, &roblox_sensitivity_text, "In-game Roblox Sensitivity", [&roblox_sensitivity_valueselect, "0.2", "", 0, 4, true], ["Please set this! It helps to create more accurate flicks", "s8", "s11"])
+    global flick_multiplier   := create_text(main, &roblox_sensitivity_text, "Flick Multiplier",           [&flick_multiplier_valueselect,   "1", "x", 0, 10, true], ["manually configure your flick multi", "s8", "s11"])
 
 main.setfont("cwhite s10 norm")
     bottom_text(main, &bottom_exitapp_info,       "Created by @anbubu on Discord`n° = degree symbol`nFYI: Roblox Sensitivity affects flick amount`nForce Quit: Alt + P")
@@ -1012,11 +1015,7 @@ macro_toggle_function(x, y := false, hotkey_guictrl := false, valueselect_guictr
     toggle_used := x.classnn
 
     if !hotkey_guictrl {
-        try {
-            action_function(x)
-        } catch error {
-            action_function
-        }
+        action_function(x, y)
         return
     }
 
@@ -1049,15 +1048,53 @@ macro_toggle_function(x, y := false, hotkey_guictrl := false, valueselect_guictr
     hotkey macro_key, valueselect_guictrl and amount ? (thishotkey) => action_function(thishotkey, amount, x) : action_function, new_x_value
 }
 
-overlay(toggle) {
-    if toggle {
-        mouse_overlay_gui := gui("-caption -minimizebox -maximizebox", "mouse overlay")
-        
+move_to_mouse(gui, center := false) {
+    try {
+        gui.getpos(,, &getpos_width, &getpos_height)
+        coordmode "mouse", "screen"
+        mousegetpos &mouse_x, &mouse_y
+        gui.move(center ? mouse_x - (getpos_width / 2) : mouse_x, mouse_y)
+    } catch error {
+        settimer , 0
     }
 }
 
-roblox_angle_to_pixel(angle, sensitivity) {
-    return angle / sensitivity / 50
+overlay(checkbox, y) {
+    if checkbox.value {
+        global mouse_overlay_gui := gui("-caption -minimizebox -maximizebox +lastfound", "mouse overlay")
+        mouse_overlay_gui.backcolor := "000001"
+        winsettranscolor "000001"
+
+        global mouse_overlay_toggle_counter := 0
+
+        add_overlay(gui, &name, string, toggle := false) {
+            global mouse_overlay_toggle_counter
+
+            name := gui.addtext("x0", string)
+            name.move(, mouse_overlay_toggle_counter * 20)
+
+            mouse_overlay_toggle_counter += 1
+
+            return name
+        }
+
+        mouse_overlay_gui.setfont("cwhite s12 norm", "segoe ui")
+            global flick_overlay := add_overlay(mouse_overlay_gui, &flick_overlay, "wop wop wop wop wop dot fuck em up")
+            global wallwalk_overlay := add_overlay(mouse_overlay_gui, &wallwalk_overlay, "wop wop wop wop wop lemme do my stuff")
+            global something_overlay := add_overlay(mouse_overlay_gui, &something_overlay, "this is literally in testing dont enable this")
+
+        move_mouse_overlay_to_mouse := move_to_mouse.bind(mouse_overlay_gui)
+        settimer move_mouse_overlay_to_mouse, fps(60), -1
+
+        mouse_overlay_gui.show("w300 h500")
+    } else {
+        global mouse_overlay_gui
+        mouse_overlay_gui.destroy()
+    }
+}
+
+roblox_angle_to_pixel(angle, sensitivity, flick_multi := false) {
+    return angle / sensitivity / 90 / (flick_multi ? flick_multi : 1)
 }
 
 flick(thishotkey, amount, guictrl) {
@@ -1073,10 +1110,12 @@ flick(thishotkey, amount, guictrl) {
     }
 
     global roblox_sensitivity
+    global flick_multiplier
 
     sensitivity := roblox_sensitivity[3].value
+    flick_multi := flick_multiplier[3].value
 
-    newamount := roblox_angle_to_pixel(amount, regexreplace(sensitivity, "[\[\]]"))
+    newamount := roblox_angle_to_pixel(amount, regexreplace(sensitivity, "[\[\]]"), regexreplace(flick_multi, "[\[\]]"))
 
     mousemove newamount, 0, 0, "R"
     sleep fps(60) + 15
