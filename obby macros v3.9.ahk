@@ -3,7 +3,7 @@
 
 start_time := a_tickcount
 
-global VERSION := "v3.8"
+global VERSION := "v3.9"
 
 try {
     if !isset(newthread) {
@@ -24,7 +24,7 @@ global main := gui("-caption -minimizebox -maximizebox", "obby macros v3")
     main_toggletype_width       := " w" main_toggletype_width_raw
     main_exitapp_bind           := "*!p"
     global main_width_raw       := 350
-    global main_height_raw      := 450
+    global main_height_raw      := 500
     main_top                    := "y" main_top_raw
     main_width                  := "w" main_width_raw
     main_height                 := "h" main_height_raw
@@ -946,13 +946,14 @@ under_title.move(,, main_width_raw - getpos_width - 20)
 main.setfont("cwhite s12 norm")
     ; quick tip, if you're defining the valueselect array, make sure to convert any number that has a decimal into a string to prevent a flurry of 0s
     ; i have yet to have create_checkbox return an array of useful things
-    global flick_macro      := create_checkbox(main, &flick_macro_checkbox,      "Flick Macro",        flick,     &flick_macro_hotkey,      [&flick_macro_valueselect,      45,  "°", -1000, 1000, true], ["lets you flick, mainly for wall hops",                 "s8", "s12"])
-    global wallwalk_macro   := create_checkbox(main, &wallwalk_macro_checkbox,   "Wallwalk Macro",     wallwalk,  &wallwalk_macro_checkbox, [&wallwalk_macro_valueselect,   15,  "°", -1000, 1000, true], ["spams flick",                                          "s8", "s12"])
-    global cornerclip_macro := create_checkbox(main, &cornerclip_macro_checkbox, "Corner Clip Macro",  flick,     &cornerclip_macro_hotkey, [&cornerclip_macro_valueselect, 180, "°", -1000, 1000, true], ["flicks 180°, unless you change it",                    "s8", "s12"])
-    global freeze_macro     := create_checkbox(main, &freeze_macro_checkbox,     "Freeze Macro",       freeze,    &freeze_macro_hotkey,,                                                                  ["freezes roblox without the white bar, hold to freeze", "s8", "s12"])
-    global low_fps_macro    := create_checkbox(main, &low_fps_macro_checkbox,    "Low FPS Macro",      low_fps,   &low_fps_macro_hotkey,    [&low_fps_macro_valueselect,    30, " FPS", 0,   1000, true], ["spams freeze to replicate low fps, inaccurate",        "s8", "s12"])
-    global chat_msg_macro   := create_checkbox(main, &chat_msg_macro_checkbox,   "Chat Message Macro", chat_msg,  &chat_msg_macro_hotkey,   [&chat_msg_macro_valueselect,  "/e dance2"],                  ["quickly pastes and enters a message in chat",          "s8", "s12"])
-    global mouse_overlay    := create_checkbox(main, &mouse_overlay_checkbox,    "Mouse Overlay",      overlay,,,                                                                                         ["wip",                                                  "s8", "s12"])
+    global flick_macro        := create_checkbox(main, &flick_macro_checkbox,        "Flick Macro",        flick,        &flick_macro_hotkey,        [&flick_macro_valueselect,        45,  "°", -1000, 1000, true], ["lets you flick, mainly for wall hops",                  "s8", "s12"])
+    global single_flick_macro := create_checkbox(main, &single_flick_macro_checkbox, "Single Flick Macro", single_flick, &single_flick_macro_hotkey, [&single_flick_macro_valueselect, 90,  "°", -1000, 1000, true], ["flicks mouse without moving it back, good for lodging", "s8", "s12"])
+    global wallwalk_macro     := create_checkbox(main, &wallwalk_macro_checkbox,     "Wallwalk Macro",     wallwalk,     &wallwalk_macro_checkbox,   [&wallwalk_macro_valueselect,     15,  "°", -1000, 1000, true], ["spams flick",                                           "s8", "s12"])
+    global cornerclip_macro   := create_checkbox(main, &cornerclip_macro_checkbox,   "Corner Clip Macro",  flick,        &cornerclip_macro_hotkey,   [&cornerclip_macro_valueselect,   180, "°", -1000, 1000, true], ["flicks 180°, unless you change it",                     "s8", "s12"])
+    global freeze_macro       := create_checkbox(main, &freeze_macro_checkbox,       "Freeze Macro",       freeze,       &freeze_macro_hotkey,,                                                                      ["freezes roblox without the white bar, hold to freeze",  "s8", "s12"])
+    global low_fps_macro      := create_checkbox(main, &low_fps_macro_checkbox,      "Low FPS Macro",      low_fps,      &low_fps_macro_hotkey,      [&low_fps_macro_valueselect,      30, " FPS", 0,   1000, true], ["spams freeze to replicate low fps, inaccurate",         "s8", "s12"])
+    global chat_msg_macro     := create_checkbox(main, &chat_msg_macro_checkbox,     "Chat Message Macro", chat_msg,     &chat_msg_macro_hotkey,     [&chat_msg_macro_valueselect,  "/e dance2"],                    ["quickly pastes and enters a message in chat",           "s8", "s12"])
+    global mouse_overlay      := create_checkbox(main, &mouse_overlay_checkbox,      "Mouse Overlay",      overlay,,,                                                                                                ["wip",                                                   "s8", "s12"])
 
 main.setfont("cwhite s11 norm")
     global roblox_sensitivity := create_text(main, &roblox_sensitivity_text, "In-game Roblox Sensitivity", [&roblox_sensitivity_valueselect, "0.2", "", 0, 4, true], ["Please set this! It helps to create more accurate flicks", "s8", "s11"])
@@ -1123,10 +1124,10 @@ overlay(checkbox, y) {
 }
 
 roblox_angle_to_pixel(angle, sensitivity, flick_multi := false) {
-    return angle / sensitivity / 90 / (flick_multi ? flick_multi : 1)
+    return angle / sensitivity / 90 * (flick_multi ? flick_multi : 1)
 }
 
-flick(thishotkey, amount, guictrl) {
+flick(thishotkey, amount, guictrl, single_flick := false) {
     if thishotkey = "lbutton" {
         mousegetpos ,,, &control_classnn
 
@@ -1148,8 +1149,17 @@ flick(thishotkey, amount, guictrl) {
 
     mousemove newamount, 0, 0, "R"
     sleep fps(60) + 15
+
+    if single_flick {
+        return
+    }
+
     mousemove -newamount, 0, 0, "R"
     sleep fps(60) + 15
+}
+
+single_flick(thishotkey, amount, guictrl) {
+    flick(thishotkey, amount, guictrl, true)
 }
 
 wallwalk(thishotkey, amount, guictrl) {
