@@ -3,7 +3,7 @@
 
 start_time := a_tickcount
 
-global VERSION := "v3.7"
+global VERSION := "v3.8"
 
 try {
     if !isset(newthread) {
@@ -28,6 +28,8 @@ global main := gui("-caption -minimizebox -maximizebox", "obby macros v3")
     main_top                    := "y" main_top_raw
     main_width                  := "w" main_width_raw
     main_height                 := "h" main_height_raw
+    on_color                    := "cc0ffc0"
+    off_color                   := "cffc0c0"
     installmousehook
     setmousedelay -1
 
@@ -295,7 +297,7 @@ amountselect(x, y, checkbox, unit := false, min := false, max := false, number_o
 
     if !number_only {
         checkbox.value := false
-        checkbox.setfont("cffc0c0")
+        checkbox.setfont(off_color)
     }
 
     ; get old text
@@ -542,7 +544,7 @@ create_checkbox(gui, &name, text, action_function := false, hotkey := false, val
     main_heightoffset_raw := 45
     name := gui.addcheckbox(main_leftoffset "y" main_heightoffset_raw + (20 * toggle_counter) + caption_counter, text)
     name.value := enabled
-    enabled ? name.setfont("cc0ffc0") : name.setfont("cffc0c0")
+    enabled ? name.setfont(on_color) : name.setfont(off_color)
 
     toggle_counter += 1
 
@@ -950,7 +952,7 @@ main.setfont("cwhite s12 norm")
     global freeze_macro     := create_checkbox(main, &freeze_macro_checkbox,     "Freeze Macro",       freeze,    &freeze_macro_hotkey,,                                                                  ["freezes roblox without the white bar, hold to freeze", "s8", "s12"])
     global low_fps_macro    := create_checkbox(main, &low_fps_macro_checkbox,    "Low FPS Macro",      low_fps,   &low_fps_macro_hotkey,    [&low_fps_macro_valueselect,    30, " FPS", 0,   1000, true], ["spams freeze to replicate low fps, inaccurate",        "s8", "s12"])
     global chat_msg_macro   := create_checkbox(main, &chat_msg_macro_checkbox,   "Chat Message Macro", chat_msg,  &chat_msg_macro_hotkey,   [&chat_msg_macro_valueselect,  "/e dance2"],                  ["quickly pastes and enters a message in chat",          "s8", "s12"])
-    global mouse_overlay    := create_checkbox(main, &mouse_overlay_checkbox,    "Mouse Overlay",      overlay)
+    global mouse_overlay    := create_checkbox(main, &mouse_overlay_checkbox,    "Mouse Overlay",      overlay,,,                                                                                         ["wip",                                                  "s8", "s12"])
 
 main.setfont("cwhite s11 norm")
     global roblox_sensitivity := create_text(main, &roblox_sensitivity_text, "In-game Roblox Sensitivity", [&roblox_sensitivity_valueselect, "0.2", "", 0, 4, true], ["Please set this! It helps to create more accurate flicks", "s8", "s11"])
@@ -985,7 +987,7 @@ macro_toggle_function(x, y := false, hotkey_guictrl := false, valueselect_guictr
     }
 
     ; color of checkboxes when toggling
-    color := x.value ? "cc0ffc0" : "cffc0c0"
+    color := x.value ? on_color : off_color
     x.setfont("c" . color)
 
     ; dumb fix for mouse buttons working 💀
@@ -1030,6 +1032,8 @@ macro_toggle_function(x, y := false, hotkey_guictrl := false, valueselect_guictr
             valueselect_guictrl.move(getpos_x + 28)
         }
 
+        hotkey_checkbox_map.delete(macro_key)
+
         return
     }
 
@@ -1059,36 +1063,61 @@ move_to_mouse(gui, center := false) {
     }
 }
 
+overlay_toggle_display(overlay, toggle) {
+    if isset(overlay) {
+        overlay[2].value := toggle ? overlay[4] : overlay[3]
+        overlay[2].setfont(toggle ? on_color : off_color)
+    }
+}
+
 overlay(checkbox, y) {
     if checkbox.value {
         global mouse_overlay_gui := gui("-caption -minimizebox -maximizebox +lastfound", "mouse overlay")
         mouse_overlay_gui.backcolor := "000001"
         winsettranscolor "000001"
 
+        global mouse_overlay_guictrls := []
         global mouse_overlay_toggle_counter := 0
 
-        add_overlay(gui, &name, string, toggle := false) {
-            global mouse_overlay_toggle_counter
+        add_overlay(gui, &name, string, toggle := false, togglestring_off := false, togglestring_on := false, checkbox := false) {
+            global mouse_overlay_toggle_counter, mouse_overlay_guictrls
 
             name := gui.addtext("x0", string)
             name.move(, mouse_overlay_toggle_counter * 20)
+            
+            if toggle {
+                toggle_display := gui.addtext(, checkbox.value ? togglestring_on : togglestring_off)
+                toggle_display.setfont(checkbox.value ? on_color : off_color)
+                guictrl_setrightof(toggle_display, name)
+            }
 
             mouse_overlay_toggle_counter += 1
 
-            return name
+            mouse_overlay_guictrls.push(name)
+
+            return [name, toggle_display, togglestring_off, togglestring_on]
         }
 
+        global flick_macro
+
         mouse_overlay_gui.setfont("cwhite s12 norm", "segoe ui")
-            global flick_overlay := add_overlay(mouse_overlay_gui, &flick_overlay, "wop wop wop wop wop dot fuck em up")
-            global wallwalk_overlay := add_overlay(mouse_overlay_gui, &wallwalk_overlay, "wop wop wop wop wop lemme do my stuff")
-            global something_overlay := add_overlay(mouse_overlay_gui, &something_overlay, "this is literally in testing dont enable this")
+            global flick_overlay := add_overlay(mouse_overlay_gui, &flick_overlay, "i js slap'd dafuq out my cousin n took his ", true, "toaster strudel", "ramen noodles", flick_macro[1])
+            ;global wallwalk_overlay := add_overlay(mouse_overlay_gui, &wallwalk_overlay, "wop wop wop wop wop lemme do my stuff")
+            ;global something_overlay := add_overlay(mouse_overlay_gui, &something_overlay, "this is literally in testing dont enable this")
 
         move_mouse_overlay_to_mouse := move_to_mouse.bind(mouse_overlay_gui)
         settimer move_mouse_overlay_to_mouse, fps(60), -1
 
-        mouse_overlay_gui.show("w300 h500")
+        mouse_overlay_gui.show("w500 h500")
     } else {
-        global mouse_overlay_gui
+        global mouse_overlay_gui, mouse_overlay_guictrls
+
+        /*
+        for _, v in mouse_overlay_guictrls {
+            
+        }
+        */
+
         mouse_overlay_gui.destroy()
     }
 }
@@ -1115,7 +1144,7 @@ flick(thishotkey, amount, guictrl) {
     sensitivity := roblox_sensitivity[3].value
     flick_multi := flick_multiplier[3].value
 
-    newamount := roblox_angle_to_pixel(amount, regexreplace(sensitivity, "[\[\]]"), regexreplace(flick_multi, "[\[\]]"))
+    newamount := roblox_angle_to_pixel(amount, regexreplace(sensitivity, "[\[\]]"), regexreplace(flick_multi, "[\[\]x]"))
 
     mousemove newamount, 0, 0, "R"
     sleep fps(60) + 15
@@ -1124,9 +1153,15 @@ flick(thishotkey, amount, guictrl) {
 }
 
 wallwalk(thishotkey, amount, guictrl) {
+    global flick_overlay
+
+    overlay_toggle_display(flick_overlay, true)
+
     while getkeystate(thishotkey, "P") {
         flick(thishotkey, amount, guictrl)
     }
+
+    overlay_toggle_display(flick_overlay, false)
 }
 
 freeze(thishotkey) {
