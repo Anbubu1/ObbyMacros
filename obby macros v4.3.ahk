@@ -1,6 +1,6 @@
 #requires AutoHotkey v2.0
 
-global VERSION := "v4.2"
+global VERSION := "v4.3"
 
 $*!p:: {
     exitapp
@@ -39,7 +39,7 @@ global main := gui("-maximizebox +lastfound +owndialogs", "Obby Macros " VERSION
 
     main.raw_width  := 600
     main.width      := "w" main.raw_width
-    main.raw_height := 365
+    main.raw_height := 340
     main.height     := "h" main.raw_height
 
     main.backcolor := "19222D"
@@ -62,17 +62,17 @@ global main := gui("-maximizebox +lastfound +owndialogs", "Obby Macros " VERSION
     shift_column(main, 2, 25)
 
     main.setfont("s12")
-        create_checkbox(main, "Flick Macro",               flick,    1,       ["flicks your mouse, mainly used for wallhops", "s8", "s12", true],, true, [90, "°", -360, 360])
-        create_checkbox(main, "Second Flick Macro",        flick,    1,       ["in-case you needed another value or hotkey",  "s8", "s12", true],, true, [45, "°", -360, 360])
-        create_checkbox(main, "Third Flick Macro",         flick,    1,       ["in-case you needed ANOTHER value or hotkey!", "s8", "s12", true],, true, [45, "°", -360, 360])
-        create_checkbox(main, "Spam Flick Macro",          wallwalk, 1,       ["mainly for wallwalks", "s8", "s12", true],,                        true, [15, "°", -360, 360])
-        create_checkbox(main, "Chat Message Macro",        chat_msg, 1,       ["pastes a message in chat", "s8", "s12", true],,                    true, ["/e dance2", "", -360, 360, true])
-        create_checkbox(main, "Second Chat Message Macro", chat_msg, 1,       ["if you wanna hotkey another chat message", "s8", "s12", true],,                    true, ["/e laugh", "", -360, 360, true])
-        create_checkbox(main, "Freeze Macro",              freeze,   1,       ["freezes roblox", "s8", "s12", true],,                              true)
-        create_checkbox(main, "Low FPS Macro",             low_fps,  1,       ["spam freezes roblox", "s8", "s12", true],,                         true, [30, " FPS", 0.5, 240])
-        create_checkbox(main, "Switch FPS Macro",          switch_fps,  1,    ["switches fps on roblox", "s8", "s12", true],,                         true, [30, " FPS", 0.5, 240])
-        create_checkbox(main, "Always On Top",             always_on_top, 2,  ["makes the gui always on top", "s8", "s12", true])
-        create_checkbox(main, "Transparent GUI",           transparency,  2,  ["makes the gui transparent [0-255] (0 is invisible)", "s8", "s12", true],,,[125, "", 0, 255])
+        create_checkbox(main, "Flick Macro",               flick,          1, ["flicks your mouse, mainly used for wallhops", "s8", "s12", true],, true, [90, "°", -360, 360])
+        create_checkbox(main, "Second Flick Macro",        flick,          1, ["in-case you needed another value or hotkey",  "s8", "s12", true],, true, [45, "°", -360, 360])
+        create_checkbox(main, "Third Flick Macro",         flick,          1, ["in-case you needed ANOTHER value or hotkey!", "s8", "s12", true],, true, [45, "°", -360, 360])
+        create_checkbox(main, "Spam Flick Macro",          wallwalk,       1, ["mainly for wallwalks", "s8", "s12", true],,                        true, [15, "°", -360, 360])
+        create_checkbox(main, "Chat Message Macro",        chat_msg,       1, ["pastes a message in chat", "s8", "s12", true],,                    true, ["/e dance2", "", -360, 360, true])
+        create_checkbox(main, "Second Chat Message Macro", chat_msg,       1, ["if you wanna hotkey another chat message", "s8", "s12", true],,                    true, ["/e laugh", "", -360, 360, true])
+        create_checkbox(main, "Freeze Macro",              freeze,         1, ["freezes roblox", "s8", "s12", true],,                              true)
+        create_checkbox(main, "Low FPS Macro",             low_fps,        1, ["spam freezes roblox", "s8", "s12", true],,                         true, [30, " FPS", 0.5, 240])
+        ;create_checkbox(main, "Switch FPS Macro (no work)",          switch_fps,     1, ["switches fps on roblox", "s8", "s12", true],,                      true, [30, " FPS", 0.5, 240,, true])
+        create_checkbox(main, "Always On Top",             always_on_top,  2, ["makes the gui always on top", "s8", "s12", true])
+        create_checkbox(main, "Transparent GUI",           transparency,   2, ["makes the gui transparent [0-255] (0 is invisible)", "s8", "s12", true],,,[125, "", 0, 255])
         global flick_sensitivity := create_text(main, "Flick Sensitivity", 2, ["Set your flick sensitivity here.", "s8", "s12"], [1, "x", 0.01, 100])
         create_text(main, "Credits",           2, ["
                                                    (
@@ -141,8 +141,7 @@ create_checkbox(
     is_enabled    := false,
     var_hotkey    := false,
     valueselect   := false,
-    y_offset      := false,
-    second_hotkey := false
+    y_offset      := false
 ) {
     global y_amts_used_map_guis
     global valued_guictrls
@@ -176,7 +175,8 @@ create_checkbox(
         valueselect_unit  := valueselect[2]
         valueselect_min   := valueselect[3]
         valueselect_max   := valueselect[4]
-        valueselect_text  := valueselect.length = 5 ? valueselect[5] : false
+        valueselect_text  := valueselect.has(5) ? valueselect[5] : false
+        valueselect_dropdown := valueselect.has(6) ? valueselect[6] : false
 
         valueselect_guictrl := gui.addtext("+backgroundtrans +right", "[" valueselect_value  valueselect_unit "]")
 
@@ -190,7 +190,7 @@ create_checkbox(
 
         valueselect_guictrl.array := valueselect
 
-        binded_valueselect_change := valueselect_change.bind(,, checkbox,, valueselect_text)
+        binded_valueselect_change := valueselect_change.bind(,, checkbox,, valueselect_text, valueselect_dropdown)
         valueselect_guictrl.onevent("click", binded_valueselect_change)
 
         if fileexist("config.ini") and filegetsize("config.ini") > 0 {
@@ -327,6 +327,7 @@ create_text(
     colorless     := false
 ) {
     global y_amts_used_map_guis
+    global valued_guictrls
 
     if !y_amts_used_map_guis.has(gui) {
         y_amts_used_map_guis[gui] := []
@@ -369,6 +370,21 @@ create_text(
 
         binded_valueselect_change := valueselect_change.bind(,, checkbox,, true)
         valueselect_guictrl.onevent("click", binded_valueselect_change)
+
+        if fileexist("config.ini") and filegetsize("config.ini") > 0 {
+            try {
+                cfg_values := strsplit(iniread("config.ini", "main", checkbox.text), "|")
+                cfg_value := cfg_values[2]
+                if cfg_value = "" {
+                    cfg_value := 0
+                }
+                old_length := strlen(valueselect_guictrl.value)
+                valueselect_guictrl.value := "[" cfg_value valueselect_unit "]"
+                new_length := strlen(valueselect_guictrl.value)
+            } catch error {
+    
+            }
+        }
     } else {
         valueselect_guictrl := false
     }
@@ -424,9 +440,9 @@ create_text(
         gui.setfont(checkbox_text_size)
     }
 
-    checkbox.redraw()
-
     return_info := [checkbox, false, column, false, valueselect_guictrl]
+
+    valued_guictrls[checkbox] := return_info
 
     return return_info
 }
@@ -450,7 +466,7 @@ guictrl_port(checkbox,
         }
 
         if hotkeys_for_functions.has(hotkey_key) {
-            if hotkeys_for_functions[hotkey_key] != onevent_function or hotkeys_for_functions[hotkey_key] = onevent_function {
+            if hotkeys_for_functions[hotkey_key] != onevent_function {
                 msgbox "please pick another hotkey!`nthis one is being used already",, "T2"
 
                 checkbox.setfont("cwhite")
@@ -577,6 +593,10 @@ process_resume(PID_or_name) {
     dllcall("CloseHandle", "int", process_openprocess)
 }
 
+switch_fps(thishotkey, valueselect) {
+
+}
+
 always_on_top(checkbox, href) {
     winsetalwaysontop checkbox.value, "Obby Macros v4"
 }
@@ -689,7 +709,7 @@ hotkey_change(text, href, checkbox, valueselect := false) {
     checkbox.boundfunc(checkbox)
 }
 
-valueselect_change(text, href, checkbox, valueselect := false, is_text := false) {
+valueselect_change(text, href, checkbox, valueselect := false, is_text := false, is_dropdown := false) {
     unit := text.array[2]
 
     oldtext_value := text.value
@@ -697,6 +717,9 @@ valueselect_change(text, href, checkbox, valueselect := false, is_text := false)
     text.value := "[..." unit "]"
 
     text.setfont("cyellow")
+
+    if is_dropdown
+        msgbox "yaya"
 
     checkkeys(inputhook, vk, sc) {
         if (inputhook.input = "." or regexmatch(inputhook.input, "^(?=.*?\..*?\.).*$")) and !is_text {
