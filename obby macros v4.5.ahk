@@ -1,6 +1,6 @@
 #requires AutoHotkey v2.0
 
-global VERSION := "v4.3"
+global VERSION := "v4.4"
 
 $*!p:: {
     exitapp
@@ -39,7 +39,7 @@ global main := gui("-maximizebox +lastfound +owndialogs", "Obby Macros " VERSION
 
     main.raw_width  := 600
     main.width      := "w" main.raw_width
-    main.raw_height := 340
+    main.raw_height := 450
     main.height     := "h" main.raw_height
 
     main.backcolor := "19222D"
@@ -65,7 +65,10 @@ global main := gui("-maximizebox +lastfound +owndialogs", "Obby Macros " VERSION
         create_checkbox(main, "Flick Macro",               flick,          1, ["flicks your mouse, mainly used for wallhops", "s8", "s12", true],, true, [90, "°", -360, 360])
         create_checkbox(main, "Second Flick Macro",        flick,          1, ["in-case you needed another value or hotkey",  "s8", "s12", true],, true, [45, "°", -360, 360])
         create_checkbox(main, "Third Flick Macro",         flick,          1, ["in-case you needed ANOTHER value or hotkey!", "s8", "s12", true],, true, [45, "°", -360, 360])
+        create_checkbox(main, "Single Flick Macro",        single_flick,   1, ["does a single flick", "s8", "s12", true],,                         true, [90, "°", -360, 360])
+        create_checkbox(main, "Second Single Flick Macro", single_flick,   1, ["what", "s8", "s12", true],,                                        true, [-90, "°", -360, 360])
         create_checkbox(main, "Spam Flick Macro",          wallwalk,       1, ["mainly for wallwalks", "s8", "s12", true],,                        true, [15, "°", -360, 360])
+        create_checkbox(main, "Second Spam Flick Macro",   wallwalk,       1, ["ermm what", "s8", "s12", true],,                                   true, [-15, "°", -360, 360])
         create_checkbox(main, "Chat Message Macro",        chat_msg,       1, ["pastes a message in chat", "s8", "s12", true],,                    true, ["/e dance2", "", -360, 360, true])
         create_checkbox(main, "Second Chat Message Macro", chat_msg,       1, ["if you wanna hotkey another chat message", "s8", "s12", true],,                    true, ["/e laugh", "", -360, 360, true])
         create_checkbox(main, "Freeze Macro",              freeze,         1, ["freezes roblox", "s8", "s12", true],,                              true)
@@ -93,6 +96,11 @@ global main := gui("-maximizebox +lastfound +owndialogs", "Obby Macros " VERSION
                                                     BACKSPACE key to reset.
                                                     ENTER key to set.
                                                    )", "s8", "s12"])
+        create_text(main, "Disclaimer",2,         ["
+                                                   (
+                                                   Make sure you're allowed to use this macro, cuz
+                                                   it basically gives you an advantage 💀
+                                                   )", "s8", "s12",,, 10])
 
 main.show(main.width " " main.height)
 
@@ -509,8 +517,21 @@ flick(thishotkey, valueselect) {
     flick_multiplier := regexreplace(unfiltered_flick_multiplier, "[\[\]" flick_mult_unit "]")
 
     new_mousemove(flick_value * flick_multiplier)
-    sleep 1000 / 60
+    sleep (1000 / 60) + 15
     new_mousemove(-flick_value * flick_multiplier)
+}
+
+single_flick(thishotkey, valueselect) {
+    unfiltered_flick_value      := valueselect.value
+    flick_val_unit              := valueselect.array[2]
+    unfiltered_flick_multiplier := flick_sensitivity[5].value
+    flick_mult_unit             := flick_sensitivity[5].array[2]
+
+
+    flick_value := regexreplace(unfiltered_flick_value, "[\[\]" flick_val_unit "]")
+    flick_multiplier := regexreplace(unfiltered_flick_multiplier, "[\[\]" flick_mult_unit "]")
+
+    new_mousemove(flick_value * flick_multiplier)
 }
 
 wallwalk(thishotkey, valueselect) {
@@ -547,8 +568,10 @@ new_mousemove(x := false, y := false) {
 }
 
 freeze(thishotkey) {
+    fixed_hotkey := regexreplace(thishotkey, "\*\$")
+
     process_suspend("RobloxPlayerBeta.exe")
-    keywait thishotkey
+    keywait fixed_hotkey
     process_resume("RobloxPlayerBeta.exe")
 }
 
@@ -818,8 +841,17 @@ save_config(exitreason := false, exitcode := false) {
     iniwrite VERSION, "config.ini", "version", "version_number"
     for i, v in valued_guictrls {
         main_guictrl := v[1].text
+        try {
+            if v[1].value = (0 or 1) {
+                guictrl_enabled := v[1].value
+            } else {
+                guictrl_enabled := 0
+            }
+        } catch error {
+            guictrl_enabled := 0
+        }
         set_hotkey := v[4] ? regexreplace(strlower(v[4].text), "[\[\]]") : v[4]
         set_value := v[5] ? regexreplace(regexreplace(v[5].value, "[\[\]]"), v[5].array[2]) : v[5]
-        iniwrite set_hotkey "|" set_value, "config.ini", "main", main_guictrl
+        iniwrite set_hotkey "|" set_value "|" guictrl_enabled, "config.ini", "main", main_guictrl
     }
 }
